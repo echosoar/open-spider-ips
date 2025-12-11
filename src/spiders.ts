@@ -4,9 +4,13 @@ import { Spider, IPRanges } from './types';
  * Regular expression patterns for extracting IP addresses
  * Note: These patterns are designed to capture commonly found IP formats in documentation.
  * They may match some invalid IPs but are suitable for extracting ranges from text.
+ * 
+ * Limitations:
+ * - IPv4: Does not validate octet ranges (0-255)
+ * - IPv6: Does not match compressed notation (::) or IPv4-mapped IPv6 addresses
+ * - For production use with strict validation, consider using a dedicated IP validation library
  */
 const IPV4_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}(?:\/\d{1,2})?\b/g;
-// More precise IPv6 pattern that requires at least 2 hex groups separated by colons
 const IPV6_PATTERN = /\b(?:[0-9a-fA-F]{1,4}:){1,7}[0-9a-fA-F]{1,4}(?:\/\d{1,3})?\b/g;
 
 /**
