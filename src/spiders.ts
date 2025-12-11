@@ -2,9 +2,12 @@ import { Spider, IPRanges } from './types';
 
 /**
  * Regular expression patterns for extracting IP addresses
+ * Note: These patterns are designed to capture commonly found IP formats in documentation.
+ * They may match some invalid IPs but are suitable for extracting ranges from text.
  */
 const IPV4_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}(?:\/\d{1,2})?\b/g;
-const IPV6_PATTERN = /\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:\/\d{1,3})?\b/g;
+// More precise IPv6 pattern that requires at least 2 hex groups separated by colons
+const IPV6_PATTERN = /\b(?:[0-9a-fA-F]{1,4}:){1,7}[0-9a-fA-F]{1,4}(?:\/\d{1,3})?\b/g;
 
 /**
  * Helper function to extract IP ranges using regex patterns
@@ -23,6 +26,28 @@ function extractIPRanges(text: string): IPRanges {
 }
 
 /**
+ * Helper function to parse Google's JSON format with prefixes
+ */
+function parseGoogleJSON(text: string): IPRanges {
+  const data = JSON.parse(text);
+  const ipv4Ranges: string[] = [];
+  const ipv6Ranges: string[] = [];
+
+  if (data.prefixes) {
+    data.prefixes.forEach((prefix: any) => {
+      if (prefix.ipv4Prefix) {
+        ipv4Ranges.push(prefix.ipv4Prefix);
+      }
+      if (prefix.ipv6Prefix) {
+        ipv6Ranges.push(prefix.ipv6Prefix);
+      }
+    });
+  }
+
+  return { ipv4Ranges, ipv6Ranges };
+}
+
+/**
  * Spider configurations for various search engines and AI crawlers
  */
 export const spiders: Spider[] = [
@@ -31,24 +56,7 @@ export const spiders: Spider[] = [
     name: 'google',
     type: 'search',
     official: 'https://www.gstatic.com/ipranges/goog.json',
-    format: (text: string): IPRanges => {
-      const data = JSON.parse(text);
-      const ipv4Ranges: string[] = [];
-      const ipv6Ranges: string[] = [];
-
-      if (data.prefixes) {
-        data.prefixes.forEach((prefix: any) => {
-          if (prefix.ipv4Prefix) {
-            ipv4Ranges.push(prefix.ipv4Prefix);
-          }
-          if (prefix.ipv6Prefix) {
-            ipv6Ranges.push(prefix.ipv6Prefix);
-          }
-        });
-      }
-
-      return { ipv4Ranges, ipv6Ranges };
-    },
+    format: parseGoogleJSON,
   },
 
   // Googlebot specific ranges
@@ -56,24 +64,7 @@ export const spiders: Spider[] = [
     name: 'googlebot',
     type: 'search',
     official: 'https://www.gstatic.com/ipranges/cloud.json',
-    format: (text: string): IPRanges => {
-      const data = JSON.parse(text);
-      const ipv4Ranges: string[] = [];
-      const ipv6Ranges: string[] = [];
-
-      if (data.prefixes) {
-        data.prefixes.forEach((prefix: any) => {
-          if (prefix.ipv4Prefix) {
-            ipv4Ranges.push(prefix.ipv4Prefix);
-          }
-          if (prefix.ipv6Prefix) {
-            ipv6Ranges.push(prefix.ipv6Prefix);
-          }
-        });
-      }
-
-      return { ipv4Ranges, ipv6Ranges };
-    },
+    format: parseGoogleJSON,
   },
 
   // Yandex crawler
