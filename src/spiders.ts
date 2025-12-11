@@ -1,6 +1,28 @@
 import { Spider, IPRanges } from './types';
 
 /**
+ * Regular expression patterns for extracting IP addresses
+ */
+const IPV4_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}(?:\/\d{1,2})?\b/g;
+const IPV6_PATTERN = /\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:\/\d{1,3})?\b/g;
+
+/**
+ * Helper function to extract IP ranges using regex patterns
+ */
+function extractIPRanges(text: string): IPRanges {
+  const ipv4Ranges: string[] = [];
+  const ipv6Ranges: string[] = [];
+
+  const ipv4Matches = text.match(IPV4_PATTERN);
+  const ipv6Matches = text.match(IPV6_PATTERN);
+
+  if (ipv4Matches) ipv4Ranges.push(...ipv4Matches);
+  if (ipv6Matches) ipv6Ranges.push(...ipv6Matches);
+
+  return { ipv4Ranges, ipv6Ranges };
+}
+
+/**
  * Spider configurations for various search engines and AI crawlers
  */
 export const spiders: Spider[] = [
@@ -121,30 +143,14 @@ export const spiders: Spider[] = [
   },
 
   // Facebook/Meta crawler
+  // Note: Facebook provides IP ranges through their documentation page.
+  // The actual format may vary - this uses pattern matching to extract IPs.
   {
     name: 'facebook',
     type: 'search',
     official: 'https://developers.facebook.com/docs/sharing/webmasters/crawler',
     format: (text: string): IPRanges => {
-      const ipv4Ranges: string[] = [];
-      const ipv6Ranges: string[] = [];
-
-      // Facebook's page lists IP ranges in text
-      // Common Facebook crawler IPs (these need to be verified from their actual page)
-      const ipv4Pattern = /\b(?:\d{1,3}\.){3}\d{1,3}(?:\/\d{1,2})?\b/g;
-      const ipv6Pattern = /\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:\/\d{1,3})?\b/g;
-
-      const ipv4Matches = text.match(ipv4Pattern);
-      const ipv6Matches = text.match(ipv6Pattern);
-
-      if (ipv4Matches) {
-        ipv4Ranges.push(...ipv4Matches);
-      }
-      if (ipv6Matches) {
-        ipv6Ranges.push(...ipv6Matches);
-      }
-
-      return { ipv4Ranges, ipv6Ranges };
+      return extractIPRanges(text);
     },
   },
 
@@ -168,19 +174,11 @@ export const spiders: Spider[] = [
             }
           });
         }
+        return { ipv4Ranges, ipv6Ranges };
       } catch (e) {
         // Try pattern matching if JSON parsing fails
-        const ipv4Pattern = /\b(?:\d{1,3}\.){3}\d{1,3}(?:\/\d{1,2})?\b/g;
-        const ipv6Pattern = /\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:\/\d{1,3})?\b/g;
-
-        const ipv4Matches = text.match(ipv4Pattern);
-        const ipv6Matches = text.match(ipv6Pattern);
-
-        if (ipv4Matches) ipv4Ranges.push(...ipv4Matches);
-        if (ipv6Matches) ipv6Ranges.push(...ipv6Matches);
+        return extractIPRanges(text);
       }
-
-      return { ipv4Ranges, ipv6Ranges };
     },
   },
 
@@ -190,43 +188,19 @@ export const spiders: Spider[] = [
     type: 'ai',
     official: 'https://docs.anthropic.com/claude/reference/claude-web-crawler',
     format: (text: string): IPRanges => {
-      const ipv4Ranges: string[] = [];
-      const ipv6Ranges: string[] = [];
-
-      // Extract IP ranges from documentation or JSON
-      const ipv4Pattern = /\b(?:\d{1,3}\.){3}\d{1,3}(?:\/\d{1,2})?\b/g;
-      const ipv6Pattern = /\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:\/\d{1,3})?\b/g;
-
-      const ipv4Matches = text.match(ipv4Pattern);
-      const ipv6Matches = text.match(ipv6Pattern);
-
-      if (ipv4Matches) ipv4Ranges.push(...ipv4Matches);
-      if (ipv6Matches) ipv6Ranges.push(...ipv6Matches);
-
-      return { ipv4Ranges, ipv6Ranges };
+      return extractIPRanges(text);
     },
   },
 
   // Baidu crawler
+  // Note: This URL is a placeholder. Baidu doesn't officially publish IP ranges.
+  // Users should update this with the correct endpoint if/when available.
   {
     name: 'baidu',
     type: 'search',
     official: 'https://www.baidu.com/robots.txt',
     format: (text: string): IPRanges => {
-      const ipv4Ranges: string[] = [];
-      const ipv6Ranges: string[] = [];
-
-      // Extract IP ranges from any format
-      const ipv4Pattern = /\b(?:\d{1,3}\.){3}\d{1,3}(?:\/\d{1,2})?\b/g;
-      const ipv6Pattern = /\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:\/\d{1,3})?\b/g;
-
-      const ipv4Matches = text.match(ipv4Pattern);
-      const ipv6Matches = text.match(ipv6Pattern);
-
-      if (ipv4Matches) ipv4Ranges.push(...ipv4Matches);
-      if (ipv6Matches) ipv6Ranges.push(...ipv6Matches);
-
-      return { ipv4Ranges, ipv6Ranges };
+      return extractIPRanges(text);
     },
   },
 
@@ -236,19 +210,7 @@ export const spiders: Spider[] = [
     type: 'search',
     official: 'https://help.duckduckgo.com/duckduckgo-help-pages/results/duckduckbot/',
     format: (text: string): IPRanges => {
-      const ipv4Ranges: string[] = [];
-      const ipv6Ranges: string[] = [];
-
-      const ipv4Pattern = /\b(?:\d{1,3}\.){3}\d{1,3}(?:\/\d{1,2})?\b/g;
-      const ipv6Pattern = /\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:\/\d{1,3})?\b/g;
-
-      const ipv4Matches = text.match(ipv4Pattern);
-      const ipv6Matches = text.match(ipv6Pattern);
-
-      if (ipv4Matches) ipv4Ranges.push(...ipv4Matches);
-      if (ipv6Matches) ipv6Ranges.push(...ipv6Matches);
-
-      return { ipv4Ranges, ipv6Ranges };
+      return extractIPRanges(text);
     },
   },
 ];
