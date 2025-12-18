@@ -7,11 +7,106 @@ import { Spider, IPRanges } from './types';
  * 
  * Limitations:
  * - IPv4: Does not validate octet ranges (0-255)
- * - IPv6: Does not match compressed notation (::) or IPv4-mapped IPv6 addresses
+ * - IPv6: Simplified pattern that captures most common formats
  * - For production use with strict validation, consider using a dedicated IP validation library
  */
 const IPV4_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}(?:\/\d{1,2})?\b/g;
-const IPV6_PATTERN = /\b(?:[0-9a-fA-F]{1,4}:){1,7}[0-9a-fA-F]{1,4}(?:\/\d{1,3})?\b/g;
+// IPv6 pattern that matches both compressed (::) and full notation
+const IPV6_PATTERN = /(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:\/\d{1,3})?/g;
+
+/**
+ * Validate if a string is a valid IPv4 address or CIDR range
+ */
+function isValidIPv4(ip: string): boolean {
+  // Match IPv4 with optional CIDR notation
+  const match = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})(\/(\d{1,2}))?$/);
+  if (!match) return false;
+
+  // Check each octet is 0-255
+  for (let i = 1; i <= 4; i++) {
+    const octet = parseInt(match[i], 10);
+    if (octet < 0 || octet > 255) return false;
+  }
+
+  // Check CIDR prefix length if present
+  if (match[6]) {
+    const prefix = parseInt(match[6], 10);
+    if (prefix < 0 || prefix > 32) return false;
+  }
+
+  return true;
+}
+
+/**
+ * Validate if a string is a valid IPv6 address or CIDR range
+ */
+function isValidIPv6(ip: string): boolean {
+  // Extract CIDR prefix if present
+  const parts = ip.split('/');
+  const addr = parts[0];
+  const prefix = parts[1];
+
+  // Validate CIDR prefix if present
+  if (prefix) {
+    const prefixNum = parseInt(prefix, 10);
+    if (isNaN(prefixNum) || prefixNum < 0 || prefixNum > 128) return false;
+  }
+
+  // Check if address contains colons (basic IPv6 check)
+  if (!addr.includes(':')) return false;
+
+  // Check for too many :: occurrences
+  const doubleColonCount = (addr.match(/::/g) || []).length;
+  if (doubleColonCount > 1) return false;
+
+  // Check for IPv6 format
+  // This is a simplified check - full IPv6 validation is complex
+  if (addr.includes('::')) {
+    // Compressed format
+    const segments = addr.split('::');
+    
+    for (const segment of segments) {
+      if (segment === '') continue; // Empty segments are valid in ::
+      const parts = segment.split(':');
+      for (const part of parts) {
+        if (!isValidIPv6Segment(part)) return false;
+      }
+    }
+  } else {
+    // Standard format - should have 8 groups (or less with ::)
+    const segments = addr.split(':');
+    if (segments.length < 3 || segments.length > 8) return false;
+    
+    for (const segment of segments) {
+      if (!isValidIPv6Segment(segment)) return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Helper to validate IPv6 segment (1-4 hex digits)
+ */
+function isValidIPv6Segment(segment: string): boolean {
+  if (segment.length === 0) return false;
+  if (segment.length > 4) return false;
+  if (!/^[0-9a-fA-F]+$/.test(segment)) return false;
+  return true;
+}
+
+/**
+ * Validate and filter IP ranges
+ */
+function validateIPRanges(ranges: IPRanges): IPRanges {
+  const validIPv4Ranges = ranges.ipv4Ranges.filter(ip => isValidIPv4(ip));
+  const validIPv6Ranges = ranges.ipv6Ranges.filter(ip => isValidIPv6(ip));
+
+  return {
+    ipv4Ranges: validIPv4Ranges,
+    ipv6Ranges: validIPv6Ranges,
+  };
+}
 
 /**
  * Helper function to extract IP ranges using regex patterns
@@ -26,7 +121,7 @@ function extractIPRanges(text: string): IPRanges {
   if (ipv4Matches) ipv4Ranges.push(...ipv4Matches);
   if (ipv6Matches) ipv6Ranges.push(...ipv6Matches);
 
-  return { ipv4Ranges, ipv6Ranges };
+  return validateIPRanges({ ipv4Ranges, ipv6Ranges });
 }
 
 /**
@@ -48,7 +143,7 @@ function parseGoogleJSON(text: string): IPRanges {
     });
   }
 
-  return { ipv4Ranges, ipv6Ranges };
+  return validateIPRanges({ ipv4Ranges, ipv6Ranges });
 }
 
 /**
@@ -77,25 +172,8 @@ export const spiders: Spider[] = [
     type: 'search',
     official: 'https://yandex.com/ips',
     format: (text: string): IPRanges => {
-      const ipv4Ranges: string[] = [];
-      const ipv6Ranges: string[] = [];
-
-      // Yandex returns plain text with IP ranges
-      const lines = text.split('\n');
-      lines.forEach((line) => {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith('#')) return;
-
-        // Check if it's IPv6 (contains ':')
-        if (trimmed.includes(':')) {
-          ipv6Ranges.push(trimmed);
-        } else if (trimmed.includes('.')) {
-          // IPv4
-          ipv4Ranges.push(trimmed);
-        }
-      });
-
-      return { ipv4Ranges, ipv6Ranges };
+      // Yandex returns an HTML page, extract IPs from it
+      return extractIPRanges(text);
     },
   },
 
@@ -110,12 +188,23 @@ export const spiders: Spider[] = [
 
       try {
         const data = JSON.parse(text);
-        if (data.prefixes) {
-          data.prefixes.forEach((prefix: string) => {
-            if (prefix.includes(':')) {
-              ipv6Ranges.push(prefix);
-            } else {
-              ipv4Ranges.push(prefix);
+        if (data.prefixes && Array.isArray(data.prefixes)) {
+          data.prefixes.forEach((prefix: any) => {
+            // Handle object format with ipv4Prefix and ipv6Prefix properties
+            if (typeof prefix === 'object' && prefix !== null) {
+              if (prefix.ipv4Prefix) {
+                ipv4Ranges.push(prefix.ipv4Prefix);
+              }
+              if (prefix.ipv6Prefix) {
+                ipv6Ranges.push(prefix.ipv6Prefix);
+              }
+            } else if (typeof prefix === 'string') {
+              // Fallback for string format
+              if (prefix.includes(':')) {
+                ipv6Ranges.push(prefix);
+              } else {
+                ipv4Ranges.push(prefix);
+              }
             }
           });
         }
@@ -133,7 +222,7 @@ export const spiders: Spider[] = [
         });
       }
 
-      return { ipv4Ranges, ipv6Ranges };
+      return validateIPRanges({ ipv4Ranges, ipv6Ranges });
     },
   },
 
@@ -169,7 +258,7 @@ export const spiders: Spider[] = [
             }
           });
         }
-        return { ipv4Ranges, ipv6Ranges };
+        return validateIPRanges({ ipv4Ranges, ipv6Ranges });
       } catch (e) {
         // Try pattern matching if JSON parsing fails
         return extractIPRanges(text);
