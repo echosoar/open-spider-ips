@@ -10,32 +10,45 @@ async function fetchIPRanges(spider: Spider): Promise<CrawlResult> {
   try {
     console.log(`Fetching ${spider.name} from ${spider.official}...`);
 
-    const response = await fetch(spider.official, {
-      timeout: 30000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; open-spider-ips/1.0; +https://github.com/echosoar/open-spider-ips)',
-      },
-    });
+    // Create AbortController for timeout support
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, 30000);
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    try {
+      const response = await fetch(spider.official, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; open-spider-ips/1.0; +https://github.com/echosoar/open-spider-ips)',
+        },
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const text = await response.text();
+      const ranges = spider.format(text);
+
+      console.log(
+        `✓ ${spider.name}: Found ${ranges.ipv4Ranges.length} IPv4 and ${ranges.ipv6Ranges.length} IPv6 ranges`
+      );
+
+      return {
+        name: spider.name,
+        type: spider.type,
+        success: true,
+        ipv4Ranges: ranges.ipv4Ranges,
+        ipv6Ranges: ranges.ipv6Ranges,
+        timestamp,
+      };
+    } catch (fetchError) {
+      clearTimeout(timeout);
+      throw fetchError;
     }
-
-    const text = await response.text();
-    const ranges = spider.format(text);
-
-    console.log(
-      `✓ ${spider.name}: Found ${ranges.ipv4Ranges.length} IPv4 and ${ranges.ipv6Ranges.length} IPv6 ranges`
-    );
-
-    return {
-      name: spider.name,
-      type: spider.type,
-      success: true,
-      ipv4Ranges: ranges.ipv4Ranges,
-      ipv6Ranges: ranges.ipv6Ranges,
-      timestamp,
-    };
   } catch (error) {
     const errorMessage = error instanceof Error
       ? error.message

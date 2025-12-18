@@ -296,7 +296,7 @@ describe('crawlAll', () => {
     );
   });
 
-  it('should set timeout for requests', async () => {
+  it('should set timeout for requests using AbortController', async () => {
     const mockSpider: Spider = {
       name: 'timeout-test',
       type: 'search',
@@ -314,7 +314,7 @@ describe('crawlAll', () => {
     expect(mockedFetch).toHaveBeenCalledWith(
       'https://example.com/test.json',
       expect.objectContaining({
-        timeout: 30000,
+        signal: expect.any(Object),
       })
     );
   });
