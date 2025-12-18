@@ -23,6 +23,10 @@ async function fetchIPRanges(spider: Spider): Promise<CrawlResult> {
         },
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const text = await response.text();
       ranges = spider.format(text);
     } finally {

@@ -37,6 +37,7 @@ describe('crawlAll', () => {
     };
 
     mockedFetch.mockResolvedValueOnce({
+      ok: true,
       text: async () => JSON.stringify({ ipv4: ['1.2.3.0/24', '5.6.7.0/24'], ipv6: [] }),
     } as any);
 
@@ -68,6 +69,7 @@ describe('crawlAll', () => {
     };
 
     mockedFetch.mockResolvedValueOnce({
+      ok: true,
       text: async () => JSON.stringify({ ipv6: ['2001:db8::/32', '2001:db9::/32'] }),
     } as any);
 
@@ -98,6 +100,7 @@ describe('crawlAll', () => {
     };
 
     mockedFetch.mockResolvedValueOnce({
+      ok: true,
       text: async () => JSON.stringify({
         ipv4: ['192.168.1.0/24'],
         ipv6: ['2001:db8::/32'],
@@ -156,6 +159,7 @@ describe('crawlAll', () => {
 
     mockedFetch
       .mockResolvedValueOnce({
+        ok: true,
         text: async () => JSON.stringify({ ipv4: ['10.0.0.0/8'] }),
       } as any)
       .mockRejectedValueOnce(new Error('Connection timeout'));
@@ -192,11 +196,11 @@ describe('crawlAll', () => {
     mockedFetch
       .mockImplementationOnce(async () => {
         callOrder.push('spider-1');
-        return { text: async () => '{}' } as any;
+        return { ok: true, text: async () => '{}' } as any;
       })
       .mockImplementationOnce(async () => {
         callOrder.push('spider-2');
-        return { text: async () => '{}' } as any;
+        return { ok: true, text: async () => '{}' } as any;
       });
 
     await crawlAll(spiders);
@@ -232,7 +236,7 @@ describe('crawlAll', () => {
       },
     };
 
-    mockedFetch.mockResolvedValueOnce({ text: async () => 'invalid json' } as any);
+    mockedFetch.mockResolvedValueOnce({ ok: true, text: async () => 'invalid json' } as any);
 
     const results = await crawlAll([mockSpider]);
 
@@ -248,7 +252,7 @@ describe('crawlAll', () => {
       format: () => ({ ipv4Ranges: [], ipv6Ranges: [] }),
     };
 
-    mockedFetch.mockResolvedValueOnce({ text: async () => '{}' } as any);
+    mockedFetch.mockResolvedValueOnce({ ok: true, text: async () => '{}' } as any);
 
     const results = await crawlAll([mockSpider]);
 
@@ -266,7 +270,7 @@ describe('crawlAll', () => {
       format: () => ({ ipv4Ranges: [], ipv6Ranges: [] }),
     };
 
-    mockedFetch.mockResolvedValueOnce({ text: async () => '{}' } as any);
+    mockedFetch.mockResolvedValueOnce({ ok: true, text: async () => '{}' } as any);
 
     await crawlAll([mockSpider]);
 
@@ -288,7 +292,7 @@ describe('crawlAll', () => {
       format: () => ({ ipv4Ranges: [], ipv6Ranges: [] }),
     };
 
-    mockedFetch.mockResolvedValueOnce({ text: async () => '{}' } as any);
+    mockedFetch.mockResolvedValueOnce({ ok: true, text: async () => '{}' } as any);
 
     await crawlAll([mockSpider]);
 
