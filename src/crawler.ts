@@ -10,15 +10,24 @@ async function fetchIPRanges(spider: Spider): Promise<CrawlResult> {
   try {
     console.log(`Fetching ${spider.name} from ${spider.official}...`);
 
-    const response = await fetch(spider.official, {
-      timeout: 30000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; open-spider-ips/1.0; +https://github.com/echosoar/open-spider-ips)',
-      },
-    });
+    // Implement timeout using AbortController for node-fetch@2
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-    const text = await response.text();
-    const ranges = spider.format(text);
+    let ranges: IPRanges;
+    try {
+      const response = await fetch(spider.official, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; open-spider-ips/1.0; +https://github.com/echosoar/open-spider-ips)',
+        },
+      });
+
+      const text = await response.text();
+      ranges = spider.format(text);
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     console.log(
       `✓ ${spider.name}: Found ${ranges.ipv4Ranges.length} IPv4 and ${ranges.ipv6Ranges.length} IPv6 ranges`
