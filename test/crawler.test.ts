@@ -1,10 +1,10 @@
-import axios, { AxiosError } from 'axios';
-import { crawlAll } from '../crawler';
-import { Spider } from '../types';
+import fetch from 'node-fetch';
+import { crawlAll } from '../src/crawler';
+import { Spider } from '../src/types';
 
-// Mock axios
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+// Mock node-fetch
+jest.mock('node-fetch');
+const mockedFetch = fetch as jest.MockedFunction<typeof fetch>;
 
 // Mock console methods to avoid cluttering test output
 beforeEach(() => {
@@ -36,9 +36,9 @@ describe('crawlAll', () => {
       },
     };
 
-    mockedAxios.get.mockResolvedValueOnce({
-      data: JSON.stringify({ ipv4: ['1.2.3.0/24', '5.6.7.0/24'], ipv6: [] }),
-    });
+    mockedFetch.mockResolvedValueOnce({
+      text: async () => JSON.stringify({ ipv4: ['1.2.3.0/24', '5.6.7.0/24'], ipv6: [] }),
+    } as any);
 
     const results = await crawlAll([mockSpider]);
 
@@ -67,9 +67,9 @@ describe('crawlAll', () => {
       },
     };
 
-    mockedAxios.get.mockResolvedValueOnce({
-      data: JSON.stringify({ ipv6: ['2001:db8::/32', '2001:db9::/32'] }),
-    });
+    mockedFetch.mockResolvedValueOnce({
+      text: async () => JSON.stringify({ ipv6: ['2001:db8::/32', '2001:db9::/32'] }),
+    } as any);
 
     const results = await crawlAll([mockSpider]);
 
@@ -97,12 +97,12 @@ describe('crawlAll', () => {
       },
     };
 
-    mockedAxios.get.mockResolvedValueOnce({
-      data: JSON.stringify({
+    mockedFetch.mockResolvedValueOnce({
+      text: async () => JSON.stringify({
         ipv4: ['192.168.1.0/24'],
         ipv6: ['2001:db8::/32'],
       }),
-    });
+    } as any);
 
     const results = await crawlAll([mockSpider]);
 
@@ -120,7 +120,7 @@ describe('crawlAll', () => {
       format: (text: string) => ({ ipv4Ranges: [], ipv6Ranges: [] }),
     };
 
-    mockedAxios.get.mockRejectedValueOnce(new Error('Network error'));
+    mockedFetch.mockRejectedValueOnce(new Error('Network error'));
 
     const results = await crawlAll([mockSpider]);
 
@@ -154,10 +154,10 @@ describe('crawlAll', () => {
       },
     ];
 
-    mockedAxios.get
+    mockedFetch
       .mockResolvedValueOnce({
-        data: JSON.stringify({ ipv4: ['10.0.0.0/8'] }),
-      })
+        text: async () => JSON.stringify({ ipv4: ['10.0.0.0/8'] }),
+      } as any)
       .mockRejectedValueOnce(new Error('Connection timeout'));
 
     const results = await crawlAll(spiders);
@@ -189,14 +189,14 @@ describe('crawlAll', () => {
       },
     ];
 
-    mockedAxios.get
+    mockedFetch
       .mockImplementationOnce(async () => {
         callOrder.push('spider-1');
-        return { data: '{}' };
+        return { text: async () => '{}' } as any;
       })
       .mockImplementationOnce(async () => {
         callOrder.push('spider-2');
-        return { data: '{}' };
+        return { text: async () => '{}' } as any;
       });
 
     await crawlAll(spiders);
@@ -204,7 +204,7 @@ describe('crawlAll', () => {
     expect(callOrder).toEqual(['spider-1', 'spider-2']);
   });
 
-  it('should handle axios error with status code', async () => {
+  it('should handle fetch error', async () => {
     const mockSpider: Spider = {
       name: 'http-error',
       type: 'search',
@@ -212,13 +212,9 @@ describe('crawlAll', () => {
       format: () => ({ ipv4Ranges: [], ipv6Ranges: [] }),
     };
 
-    // Create a proper AxiosError-like object
-    const axiosError = Object.create(AxiosError.prototype);
-    axiosError.message = 'Request failed with status code 404';
-    axiosError.response = { status: 404 };
-    axiosError.isAxiosError = true;
+    const fetchError = new Error('Request failed with status code 404');
 
-    mockedAxios.get.mockRejectedValueOnce(axiosError);
+    mockedFetch.mockRejectedValueOnce(fetchError);
 
     const results = await crawlAll([mockSpider]);
 
@@ -236,7 +232,7 @@ describe('crawlAll', () => {
       },
     };
 
-    mockedAxios.get.mockResolvedValueOnce({ data: 'invalid json' });
+    mockedFetch.mockResolvedValueOnce({ text: async () => 'invalid json' } as any);
 
     const results = await crawlAll([mockSpider]);
 
@@ -252,7 +248,7 @@ describe('crawlAll', () => {
       format: () => ({ ipv4Ranges: [], ipv6Ranges: [] }),
     };
 
-    mockedAxios.get.mockResolvedValueOnce({ data: '{}' });
+    mockedFetch.mockResolvedValueOnce({ text: async () => '{}' } as any);
 
     const results = await crawlAll([mockSpider]);
 
@@ -270,11 +266,11 @@ describe('crawlAll', () => {
       format: () => ({ ipv4Ranges: [], ipv6Ranges: [] }),
     };
 
-    mockedAxios.get.mockResolvedValueOnce({ data: '{}' });
+    mockedFetch.mockResolvedValueOnce({ text: async () => '{}' } as any);
 
     await crawlAll([mockSpider]);
 
-    expect(mockedAxios.get).toHaveBeenCalledWith(
+    expect(mockedFetch).toHaveBeenCalledWith(
       'https://example.com/test.json',
       expect.objectContaining({
         headers: expect.objectContaining({
@@ -292,11 +288,11 @@ describe('crawlAll', () => {
       format: () => ({ ipv4Ranges: [], ipv6Ranges: [] }),
     };
 
-    mockedAxios.get.mockResolvedValueOnce({ data: '{}' });
+    mockedFetch.mockResolvedValueOnce({ text: async () => '{}' } as any);
 
     await crawlAll([mockSpider]);
 
-    expect(mockedAxios.get).toHaveBeenCalledWith(
+    expect(mockedFetch).toHaveBeenCalledWith(
       'https://example.com/test.json',
       expect.objectContaining({
         timeout: 30000,

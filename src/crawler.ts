@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios';
+import fetch from 'node-fetch';
 import { Spider, CrawlResult, IPRanges } from './types';
 
 /**
@@ -10,14 +10,15 @@ async function fetchIPRanges(spider: Spider): Promise<CrawlResult> {
   try {
     console.log(`Fetching ${spider.name} from ${spider.official}...`);
 
-    const response = await axios.get(spider.official, {
+    const response = await fetch(spider.official, {
       timeout: 30000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; open-spider-ips/1.0; +https://github.com/echosoar/open-spider-ips)',
       },
     });
 
-    const ranges = spider.format(response.data);
+    const text = await response.text();
+    const ranges = spider.format(text);
 
     console.log(
       `✓ ${spider.name}: Found ${ranges.ipv4Ranges.length} IPv4 and ${ranges.ipv6Ranges.length} IPv6 ranges`
@@ -32,9 +33,7 @@ async function fetchIPRanges(spider: Spider): Promise<CrawlResult> {
       timestamp,
     };
   } catch (error) {
-    const errorMessage = error instanceof AxiosError
-      ? `${error.message}${error.response ? ` (status: ${error.response.status})` : ''}`
-      : error instanceof Error
+    const errorMessage = error instanceof Error
       ? error.message
       : 'Unknown error';
 

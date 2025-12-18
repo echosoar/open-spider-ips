@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
+    "main": "npm run build && node dist/index.js",
     "dev": "tsx src/index.ts",
     "scrape": "tsx src/index.ts",
     "test": "jest"
@@ -16,12 +17,13 @@
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^25.0.0",
+    "@types/node-fetch": "^2.6.13",
     "jest": "^30.2.0",
     "ts-jest": "^29.4.6",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "axios": "^1.13.2"
+    "node-fetch": "^2.7.0"
   }
 }
