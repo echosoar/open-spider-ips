@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios';
-import { crawlAll } from '../crawler';
-import { Spider } from '../types';
+import { crawlAll } from '../src/crawler';
+import { Spider } from '../src/types';
 
 // Mock axios
 jest.mock('axios');
