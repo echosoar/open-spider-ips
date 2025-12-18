@@ -67,7 +67,7 @@ function isValidIPv6(ip: string): boolean {
     
     for (const segment of segments) {
       if (segment === '') continue; // Empty segments are valid in ::
-      const parts = segment.split(':');
+      const parts = segment.split(':').filter(p => p !== '');
       for (const part of parts) {
         if (!isValidIPv6Segment(part)) return false;
       }
@@ -78,6 +78,8 @@ function isValidIPv6(ip: string): boolean {
     if (segments.length < 3 || segments.length > 8) return false;
     
     for (const segment of segments) {
+      // Empty segments are not valid in non-compressed format
+      if (segment === '') return false;
       if (!isValidIPv6Segment(segment)) return false;
     }
   }
@@ -89,7 +91,8 @@ function isValidIPv6(ip: string): boolean {
  * Helper to validate IPv6 segment (1-4 hex digits)
  */
 function isValidIPv6Segment(segment: string): boolean {
-  if (segment.length === 0) return false;
+  // Allow empty segments as they're filtered out before this check in compressed notation
+  if (segment.length === 0) return true;
   if (segment.length > 4) return false;
   if (!/^[0-9a-fA-F]+$/.test(segment)) return false;
   return true;
